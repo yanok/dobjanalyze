@@ -1,0 +1,10 @@
+{
+  "authors": ["Ilya Yanok"],
+  "copyright": "Copyright © 2024, Ilya Yanok",
+  "dependencies": {
+    "argsd": "~>1.1.0"
+  },
+  "description": "Analyze D object files",
+  "license": "MIT",
+  "name": "dobjanalyze"
+}
