@@ -6,8 +6,11 @@ import nm;
 
 void main(string[] args)
 {
-    auto logger = new FileLogger(stderr, LogLevel.all);
-    sharedLog = cast(shared(Logger)) logger;
+    debug (traceLogging)
+    {
+        auto logger = new FileLogger(stderr, LogLevel.all);
+        sharedLog = cast(shared(Logger)) logger;
+    }
     trace("Arguments: ", args);
 
     if (args.length != 2)

@@ -1,13 +1,20 @@
+module nm;
+
 import std.file;
 import std.logger;
 import std.array;
 import std.conv;
+import std.algorithm.searching;
 import core.demangle;
 
 struct Symbol
 {
     string name;
     string demangledName;
+    string baseName;
+    bool isTemplateInstantiation;
+    string templateName;
+    string rest;
     char kind;
     size_t size;
 }
@@ -32,14 +39,84 @@ Symbol parseLine(string line)
         size = to!size_t(parts[1]);
     }
     auto demName = cast(string) demangle(name);
-    tracef("Symbol: name=%s, demangledName=%s, kind=%c, size=%d", name, demName, kind, size);
-    auto sym = Symbol(name, demName, kind, size);
+    import d = custom_demangle;
+
+    auto base = cast(string) d.demangle(name);
+    auto baseSplit = base.findSplit("!");
+    auto isTempl = baseSplit[2] != "";
+    auto templ = baseSplit[0];
+    auto rest = baseSplit[2];
+    tracef("Symbol: name=%s, demangledName=%s, kind=%c, size=%d, base=%s, is_instance=%s, template=%s, rest=%s",
+        name, demName, kind, size, base, isTempl, templ, rest);
+    auto sym = Symbol(name, demName, base, isTempl, templ, rest, kind, size);
 
     return sym;
 }
 
-void parseNmOutput(string text)
+struct Stats
 {
+    string group;
+    size_t count;
+    size_t totalSize;
+    size_t avgSize;
+    size_t minSize;
+    size_t maxSize;
+    size_t medianSize;
+}
+
+void displayStats(Stats s)
+{
+    import std.stdio;
+
+    writeln("----------------------------------------");
+    writefln("Stats for %s:", s.group);
+    writeln("----------------------------------------");
+    writefln("Count:  %d", s.count);
+    writefln("Size:   %d", s.totalSize);
+    writefln("Avg:    %d", s.avgSize);
+    writefln("Min:    %d", s.minSize);
+    writefln("Max:    %d", s.maxSize);
+    writefln("Median: %d", s.medianSize);
+    writeln("----------------------------------------");
+
+}
+
+Stats computeStats(string group, Symbol[] syms)
+{
+    import std.algorithm;
+
+    Stats stats;
+    stats.group = group;
+    stats.count = syms.length;
+    auto sizes = syms.map!(s => s.size).array.sort;
+    stats.totalSize = sizes.sum;
+    if (stats.count)
+    {
+        stats.avgSize = stats.totalSize / stats.count;
+        stats.minSize = sizes[0];
+        stats.maxSize = sizes[$ - 1];
+        stats.medianSize = (syms.length & 1) ? sizes[syms.length / 2] : (
+            sizes[syms.length / 2 - 1] + sizes[syms.length / 2]) / 2;
+    }
+    return stats;
+}
+
+struct Symbols
+{
+    Symbol[] allSyms;
+    Symbol[] tInsts;
+    Symbol[][char] perKind;
+    Symbol[][string] perTemplate;
+    Stats stats;
+    Stats tInstsStats;
+    Stats[char] statsPerKind;
+    Stats[string] statsPerTemplate;
+}
+
+Symbols parseNmOutput(string text)
+{
+    Symbols syms;
+
     foreach (line; text.split('\n'))
     {
         if (line.length == 0)
@@ -47,8 +124,26 @@ void parseNmOutput(string text)
             trace("Skipping an empty line");
             continue;
         }
-        parseLine(line);
+        Symbol s = parseLine(line);
+        syms.allSyms ~= s;
+        syms.perKind.require(s.kind, []) ~= s;
+        if (s.isTemplateInstantiation)
+        {
+            syms.tInsts ~= s;
+            syms.perTemplate.require(s.templateName, []) ~= s;
+        }
     }
+    syms.stats = computeStats("all file", syms.allSyms);
+    syms.tInstsStats = computeStats("template instances", syms.tInsts);
+    foreach (kind, ss; syms.perKind)
+    {
+        syms.statsPerKind[kind] = computeStats("kind " ~ kind, ss);
+    }
+    foreach (t, ss; syms.perTemplate)
+    {
+        syms.statsPerTemplate[t] = computeStats("template " ~ t, ss);
+    }
+    return syms;
 }
 
 void processObjectFile(string filename)
@@ -62,5 +157,24 @@ void processObjectFile(string filename)
     auto res = execute(["nm", "-S", "-t", "d", filename]);
     tracef("nm returned %d", res.status);
     fatalf(res.status != 0, "nm execution failed with return code %d", res.status);
-    parseNmOutput(res.output);
+    auto syms = parseNmOutput(res.output);
+
+    displayStats(syms.stats);
+    displayStats(syms.tInstsStats);
+    foreach (kind, stats; syms.statsPerKind)
+    {
+        displayStats(stats);
+    }
+
+    Stats[] tStats;
+    foreach (t, stats; syms.statsPerTemplate)
+    {
+        tStats ~= stats;
+    }
+    import std.algorithm;
+
+    foreach (stats; tStats.sort!"a.count < b.count")
+    {
+        displayStats(stats);
+    }
 }
