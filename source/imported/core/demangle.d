@@ -21,8 +21,6 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
-debug = info;
-
 debug(trace) import core.stdc.stdio : printf;
 debug(info) import core.stdc.stdio : printf;
 
