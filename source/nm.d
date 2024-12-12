@@ -5,7 +5,7 @@ import std.logger;
 import std.array;
 import std.conv;
 import std.algorithm.searching;
-import core.demangle;
+import imported.core.demangle;
 
 struct Symbol
 {

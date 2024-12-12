@@ -2870,9 +2870,9 @@ unittest
 // locally purified for internal use here only
 extern (C) private
 {
-    pure @trusted @nogc nothrow pragma(mangle, "fakePureReprintReal") void pureReprintReal(char[] nptr);
+    pure @trusted @nogc nothrow pragma(mangle, "copyOfFakePureReprintReal") void pureReprintReal(char[] nptr);
 
-    void fakePureReprintReal(char[] nptr)
+    void copyOfFakePureReprintReal(char[] nptr)
     {
         import core.stdc.stdlib : strtold;
         import core.stdc.stdio : snprintf;
