@@ -150,11 +150,12 @@ void processObjectFile(string filename)
 {
     import std.process;
 
+    auto nm = environment.get("NM", "nm");
     tracef("Processing object file %s", filename);
     fatalf(!exists(filename), "%s doesn't exists", filename);
     fatalf(!isFile(filename), "%s is not a file", filename);
     trace("Running nm to get list of symbols");
-    auto res = execute(["nm", "-S", "-t", "d", filename]);
+    auto res = execute([nm, "-S", "-t", "d", filename]);
     tracef("nm returned %d", res.status);
     fatalf(res.status != 0, "nm execution failed with return code %d", res.status);
     auto syms = parseNmOutput(res.output);
