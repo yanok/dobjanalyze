@@ -2130,7 +2130,7 @@ pure @safe:
             }
             name = dst[beg .. nameEnd];
 
-            debug(info) printf( "name (%.*s)\n", cast(int) name.length, name.ptr );
+            debug(info) printf( "name (%.*s)\n", cast(int) name.getSlice.length, name.getSlice.ptr );
             if ( 'M' == front )
                 popFront(); // has 'this' pointer
 
