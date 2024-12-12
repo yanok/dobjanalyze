@@ -10,7 +10,7 @@
  * Source:    $(DRUNTIMESRC core/_demangle.d)
  */
 
-module core.demangle;
+module imported.core.demangle;
 
 version (OSX)
     version = Darwin;
