@@ -21,6 +21,10 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
+// debug = pretty;
+
+debug(pretty) import std.stdio : writeln;
+
 debug(trace) import core.stdc.stdio : printf;
 debug(info) import core.stdc.stdio : printf;
 
@@ -38,6 +42,23 @@ private struct NoHooks
 
 private struct Demangle(Hooks = NoHooks)
 {
+    debug(pretty) {
+        int level = 0;
+        size_t ppStart(string loc) {
+            import std.array;
+            auto prefix = "  ".replicate(level) ~ "--> " ~ loc;
+            writeln(prefix);
+            level++;
+            return dst.length;
+        }
+        void ppEnd(string loc, size_t start) {
+            import std.array;
+            level--;
+            auto prefix = "  ".replicate(level) ~ "<-- " ~ loc;
+            auto res = dst[start..$].getSlice;
+            writeln(prefix ~ ": ", res);
+        }
+    }
     // NOTE: This implementation currently only works with mangled function
     //       names as they exist in an object file.  Type names mangled via
     //       the .mangleof property are effectively incomplete as far as the
@@ -488,6 +509,12 @@ pure @safe:
         debug(trace) printf( "parseLName+\n" );
         debug(trace) scope(success) printf( "parseLName-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         static if (__traits(hasMember, Hooks, "parseLName"))
         {
             auto r = hooks.parseLName(errMsg, this);
@@ -762,6 +789,12 @@ pure @safe:
 
         debug(trace) printf( "parseType+\n" );
         debug(trace) scope(success) printf( "parseType-\n" );
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         auto beg = dst.length;
         auto t = front;
 
@@ -1191,6 +1224,12 @@ pure @safe:
 
     void parseFuncArguments(out bool errStatus) scope nothrow
     {
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         // Arguments
         for ( size_t n = 0; true; n++ )
         {
@@ -1423,6 +1462,12 @@ pure @safe:
         debug(trace) printf( "parseValue+\n" );
         debug(trace) scope(success) printf( "parseValue-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         void onError()
         {
             errStatus = true;
@@ -1699,6 +1744,12 @@ pure @safe:
         debug(trace) printf( "parseTemplateArgs+\n" );
         debug(trace) scope(success) printf( "parseTemplateArgs-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
     L_nextArg:
         for ( size_t n = 0; true; n++ )
         {
@@ -1873,6 +1924,12 @@ pure @safe:
         debug(trace) printf( "parseTemplateInstanceName+\n" );
         debug(trace) scope(success) printf( "parseTemplateInstanceName-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         auto sav = pos;
         auto saveBrp = brp;
 
@@ -1903,6 +1960,11 @@ pure @safe:
                 return onError();
         }
 
+        debug(pretty) {
+            import std.array;
+            auto prefix = "  ".replicate(level);
+            writeln(prefix ~ "templateName: " ~ dst[start..$].getSlice);
+        }
         put( "!(" );
 
         parseTemplateArgs(errStatus);
@@ -1952,6 +2014,12 @@ pure @safe:
         debug(trace) printf( "parseSymbolName+\n" );
         debug(trace) scope(success) printf( "parseSymbolName-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         // LName -> Number
         // TemplateInstanceName -> Number "__T"
         switch ( front )
@@ -1991,6 +2059,12 @@ pure @safe:
     // if keepAttr, the calling convention and function attributes are not discarded, but returned
     BufSlice parseFunctionTypeNoReturn( bool keepAttr = false ) return scope nothrow
     {
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         // try to demangle a function, in case we are pointing to some function local
         auto prevpos = pos;
         auto prevlen = dst.length;
@@ -2055,6 +2129,12 @@ pure @safe:
         debug(trace) printf( "parseQualifiedName+\n" );
         debug(trace) scope(success) printf( "parseQualifiedName-\n" );
 
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         size_t  n   = 0;
         bool is_sym_name_front;
 
@@ -2086,6 +2166,12 @@ pure @safe:
     {
         debug(trace) printf( "parseMangledName+\n" );
         debug(trace) scope(success) printf( "parseMangledName-\n" );
+        debug(pretty) {
+            auto start = ppStart(__FUNCTION__);
+            scope(success) {
+                ppEnd(__FUNCTION__, start);
+            }
+        }
         BufSlice name = dst.bslice_empty;
 
         auto end = pos + n;
