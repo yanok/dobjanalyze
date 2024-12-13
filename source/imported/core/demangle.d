@@ -517,13 +517,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
-        auto val_start = dst.length;
-        if (b) {
-            b.enter("lName");
-        }
-        scope(success) {
+        debug(show_lname) {
+            auto val_start = dst.length;
             if (b) {
-                b.exit(dst[val_start..$].getSlice);
+                b.enter("lName");
+            }
+            scope(success) {
+                if (b) {
+                    b.exit(dst[val_start..$].getSlice);
+                }
             }
         }
         static if (__traits(hasMember, Hooks, "parseLName"))
