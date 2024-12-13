@@ -2418,7 +2418,7 @@ JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[]
 {
     if (__cxa_demangle && buf.length > 2 && buf[0..2] == "_Z") {
         auto res = demangleCXX(buf, __cxa_demangle, dst);
-        return JSONValue(["node": "c++-mangled", "value": res]);
+        return JSONValue(["Node": "c++-mangled", "Value": res]);
     }
     SymbolBuilder b = new SymbolBuilder();
     auto d = Demangle!()(buf, dst, b);
@@ -2426,7 +2426,7 @@ JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[]
     // non-D mangled names
     if (buf.length < 2 || !(buf[0] == 'D' || buf[0..2] == "_D")) {
         auto res = d.dst.copyInput(buf);
-        return JSONValue(["node": "non-mangled", "value": res]);
+        return JSONValue(["Node": "non-mangled", "Value": res]);
     }
     auto res = d.demangleName();
     return b.result;
@@ -3435,7 +3435,7 @@ class SymbolBuilder {
     void enter(string node) nothrow pure @safe {
         try {
             debug(sb) writeln("enter: " ~ node, "; stack: ", stack);
-            auto o = JSONValue(["node": node]);
+            auto o = JSONValue(["Node": node]);
             stack.back ~= o;
             stack ~= [[]];
         } catch(Exception) {
@@ -3448,7 +3448,7 @@ class SymbolBuilder {
             auto children = stack.back;
             stack.popBack;
             stack.back.back["children"] = JSONValue(children);
-            stack.back.back["value"] = JSONValue(result);
+            stack.back.back["Value"] = JSONValue(result);
         } catch(Exception) {
 
         }

@@ -19,6 +19,7 @@ struct Symbol
     size_t size;
 }
 
+debug = dump_json;
 Symbol parseLine(string line)
 {
     auto parts = line.split;
