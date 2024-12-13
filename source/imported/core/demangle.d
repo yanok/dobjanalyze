@@ -517,6 +517,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("lName");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
         static if (__traits(hasMember, Hooks, "parseLName"))
         {
             auto r = hooks.parseLName(errMsg, this);
@@ -795,6 +804,15 @@ pure @safe:
             auto start = ppStart(__FUNCTION__);
             scope(success) {
                 ppEnd(__FUNCTION__, start);
+            }
+        }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("type");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
             }
         }
         auto beg = dst.length;
@@ -1232,6 +1250,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("funcArguments");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
         // Arguments
         for ( size_t n = 0; true; n++ )
         {
@@ -1468,6 +1495,15 @@ pure @safe:
             auto start = ppStart(__FUNCTION__);
             scope(success) {
                 ppEnd(__FUNCTION__, start);
+            }
+        }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("value");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
             }
         }
         void onError()
@@ -1752,6 +1788,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("templateArgs");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
     L_nextArg:
         for ( size_t n = 0; true; n++ )
         {
@@ -1932,6 +1977,18 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("templateInstance");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
+        if (b) {
+            b.enter("templateName");
+        }
         auto sav = pos;
         auto saveBrp = brp;
 
@@ -1966,6 +2023,9 @@ pure @safe:
             import std.array;
             auto prefix = "  ".replicate(level);
             writeln(prefix ~ "templateName: " ~ dst[start..$].getSlice);
+        }
+        if (b) {
+            b.exit(dst[val_start..$].getSlice);
         }
         put( "!(" );
 
@@ -2022,6 +2082,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("symbolName");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
         // LName -> Number
         // TemplateInstanceName -> Number "__T"
         switch ( front )
@@ -2065,6 +2134,15 @@ pure @safe:
             auto start = ppStart(__FUNCTION__);
             scope(success) {
                 ppEnd(__FUNCTION__, start);
+            }
+        }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("functionTypeNoReturn");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
             }
         }
         // try to demangle a function, in case we are pointing to some function local
@@ -2135,6 +2213,15 @@ pure @safe:
             auto start = ppStart(__FUNCTION__);
             scope(success) {
                 ppEnd(__FUNCTION__, start);
+            }
+        }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("qualifiedName");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
             }
         }
         size_t  n   = 0;

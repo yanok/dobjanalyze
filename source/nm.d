@@ -41,6 +41,11 @@ Symbol parseLine(string line)
     auto demName = cast(string) demangle(name);
     auto sdem = structuredDemangle(name);
     tracef("Demangled: %s", sdem);
+    debug(dump_json) {
+        import std.stdio;
+        import std.json;
+        writeln(sdem.toJSON(true));
+    }
     import d = custom_demangle;
 
     auto base = cast(string) d.demangle(name);
