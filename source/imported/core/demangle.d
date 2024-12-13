@@ -3447,8 +3447,13 @@ class SymbolBuilder {
             debug(sb) writeln("exit: " ~ result ~ "; stack: ", stack);
             auto children = stack.back;
             stack.popBack;
-            stack.back.back["children"] = JSONValue(children);
-            stack.back.back["Value"] = JSONValue(result);
+            if (result != "") {
+                stack.back.back["children"] = JSONValue(children);
+                stack.back.back["Value"] = JSONValue(result);
+            } else {
+                if (stack.back.length > 1)
+                    stack.back.popBack;
+            }
         } catch(Exception) {
 
         }
