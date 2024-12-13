@@ -3450,7 +3450,8 @@ class SymbolBuilder {
             auto children = stack.back;
             stack.popBack;
             if (result != "") {
-                stack.back.back["children"] = JSONValue(children);
+                if (!children.empty)
+                    stack.back.back["children"] = JSONValue(children);
                 stack.back.back["Value"] = JSONValue(result);
             } else {
                 if (stack.back.length > 1)
