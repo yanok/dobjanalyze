@@ -76,21 +76,23 @@ private struct Demangle(Hooks = NoHooks)
     //       allocation during the course of a parsing run, this is still
     //       faster than assembling the result piecemeal.
 
+    SymbolBuilder b;
 pure @safe:
     enum AddType { no, yes }
 
 
-    this( return scope const(char)[] buf_, return scope char[] dst_ = null )
+    this( return scope const(char)[] buf_, return scope char[] dst_ = null, SymbolBuilder b_ = null )
     {
-        this( buf_, AddType.yes, dst_ );
+        this( buf_, AddType.yes, dst_, b_ );
     }
 
 
-    this( return scope const(char)[] buf_, AddType addType_, return scope char[] dst_ = null )
+    this( return scope const(char)[] buf_, AddType addType_, return scope char[] dst_ = null, SymbolBuilder b_ = null )
     {
         buf     = buf_;
         addType = addType_;
         dst.dst = dst_;
+        b = b_;
     }
 
     const(char)[]   buf     = null;
@@ -2316,6 +2318,23 @@ char[] demangle(return scope const(char)[] buf, return scope char[] dst = null, 
     return d.demangleName();
 }
 
+JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[] dst = null, CXX_DEMANGLER __cxa_demangle = null)
+{
+    if (__cxa_demangle && buf.length > 2 && buf[0..2] == "_Z") {
+        auto res = demangleCXX(buf, __cxa_demangle, dst);
+        return JSONValue(["node": "c++symbol", "value": res]);
+    }
+    SymbolBuilder b;
+    auto d = Demangle!()(buf, dst, b);
+    // fast path (avoiding throwing & catching exception) for obvious
+    // non-D mangled names
+    if (buf.length < 2 || !(buf[0] == 'D' || buf[0..2] == "_D")) {
+        auto res = d.dst.copyInput(buf);
+        return JSONValue(["node": "non-mangled", "value": res]);
+    }
+    auto res = d.demangleName();
+    return b.result;
+}
 
 /**
  * Demangles a D mangled type.
@@ -3306,4 +3325,31 @@ private struct BufSlice
 
     auto getSlice() inout nothrow scope { return buf[from .. to]; }
     size_t length() const scope { return to - from; }
+}
+
+import std.json;
+
+class SymbolBuilder {
+    import std.range;
+    JSONValue[] root;
+    JSONValue[][] stack;
+    this() {
+        stack ~= root;
+    }
+    void enter(string node) {
+        auto o = JSONValue(["node": node]);
+        stack.back ~= o;
+        stack ~= [];
+    }
+    void exit(string result) {
+        auto children = stack.back;
+        stack.popBack;
+        stack.back.back["children"] = JSONValue(children);
+        stack.back.back["value"] = JSONValue(result);
+    }
+    JSONValue result() {
+        assert(root.length == 1);
+
+        return root[0];
+    }
 }
