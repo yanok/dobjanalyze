@@ -39,6 +39,8 @@ Symbol parseLine(string line)
         size = to!size_t(parts[1]);
     }
     auto demName = cast(string) demangle(name);
+    auto sdem = structuredDemangle(name);
+    tracef("Demangled: %s", sdem);
     import d = custom_demangle;
 
     auto base = cast(string) d.demangle(name);

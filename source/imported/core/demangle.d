@@ -2174,6 +2174,15 @@ pure @safe:
                 ppEnd(__FUNCTION__, start);
             }
         }
+        auto val_start = dst.length;
+        if (b) {
+            b.enter("mangledName");
+        }
+        scope(success) {
+            if (b) {
+                b.exit(dst[val_start..$].getSlice);
+            }
+        }
         BufSlice name = dst.bslice_empty;
 
         auto end = pos + n;
@@ -2324,7 +2333,7 @@ JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[]
         auto res = demangleCXX(buf, __cxa_demangle, dst);
         return JSONValue(["node": "c++symbol", "value": res]);
     }
-    SymbolBuilder b;
+    SymbolBuilder b = new SymbolBuilder();
     auto d = Demangle!()(buf, dst, b);
     // fast path (avoiding throwing & catching exception) for obvious
     // non-D mangled names
@@ -3331,25 +3340,39 @@ import std.json;
 
 class SymbolBuilder {
     import std.range;
-    JSONValue[] root;
+    debug(sb) import std.stdio;
     JSONValue[][] stack;
     this() {
-        stack ~= root;
+        stack = [[]];
     }
-    void enter(string node) {
-        auto o = JSONValue(["node": node]);
-        stack.back ~= o;
-        stack ~= [];
-    }
-    void exit(string result) {
-        auto children = stack.back;
-        stack.popBack;
-        stack.back.back["children"] = JSONValue(children);
-        stack.back.back["value"] = JSONValue(result);
-    }
-    JSONValue result() {
-        assert(root.length == 1);
+    void enter(string node) nothrow pure @safe {
+        try {
+            debug(sb) writeln("enter: " ~ node, "; stack: ", stack);
+            auto o = JSONValue(["node": node]);
+            stack.back ~= o;
+            stack ~= [[]];
+        } catch(Exception) {
 
-        return root[0];
+        }
+    }
+    void exit(char[] result) nothrow pure @safe {
+        try {
+            debug(sb) writeln("exit: " ~ result ~ "; stack: ", stack);
+            auto children = stack.back;
+            stack.popBack;
+            stack.back.back["children"] = JSONValue(children);
+            stack.back.back["value"] = JSONValue(result);
+        } catch(Exception) {
+
+        }
+    }
+    JSONValue result() pure {
+        debug(sb) writeln("result: ", stack);
+        assert(stack.length == 1);
+        assert(stack.back.length == 1);
+        auto r = stack.back.back;
+        stack.back.popBack;
+        debug(sb) writeln("result end: ", stack);
+        return r;
     }
 }
