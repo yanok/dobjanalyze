@@ -2331,7 +2331,7 @@ JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[]
 {
     if (__cxa_demangle && buf.length > 2 && buf[0..2] == "_Z") {
         auto res = demangleCXX(buf, __cxa_demangle, dst);
-        return JSONValue(["node": "c++symbol", "value": res]);
+        return JSONValue(["node": "c++-mangled", "value": res]);
     }
     SymbolBuilder b = new SymbolBuilder();
     auto d = Demangle!()(buf, dst, b);
