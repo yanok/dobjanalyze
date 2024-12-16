@@ -4,6 +4,7 @@ import std.file;
 import std.logger;
 import std.array;
 import std.conv;
+import std.json;
 import std.algorithm.searching;
 import imported.core.demangle;
 
@@ -19,7 +20,76 @@ struct Symbol
     size_t size;
 }
 
-debug = dump_json;
+// debug = dump_json;
+
+private struct MaybeTemplateName {
+    bool isTemplate;
+    string templateNameAndField;
+    string templateArguments;
+}
+
+MaybeTemplateName maybeTemplateName(JSONValue children) {
+    string[] parts;
+    bool isTemplate = false;
+    string templateArgs = "";
+    foreach (c; children.array) {
+        fatalf(!("Node" in c.object), "%s has no Node", c);
+        fatalf(!("Value" in c.object), "%s has no Value", c);
+        if (c.object["Node"].str == "symbolName") {
+            if ("children" in c.object &&
+                "Node" in c.object["children"][0] &&
+                c.object["children"][0]["Node"].str == "templateInstance") {
+                if (isTemplate) break;
+                isTemplate = true;
+                auto ti = c.object["children"][0];
+                fatalf(!("children" in ti), "template instance %s has no children", ti);
+                auto tich = ti["children"];
+                fatalf(tich.array.length == 0, "template instance %s has zero children", ti);
+                fatalf(!("Value" in tich[0]), "template name %s has no Value", tich[0]);
+                parts ~= tich[0]["Value"].str ~ "!(...)";
+                if (tich.array.length > 1)
+                    templateArgs = tich[1]["Value"].str;
+            } else {
+                parts ~= c["Value"].str;
+                if (isTemplate) break;
+            }
+        } else {
+            break;
+        }
+    }
+    return MaybeTemplateName(
+        isTemplate: isTemplate,
+        templateNameAndField: parts.join("."),
+        templateArguments: templateArgs,
+    );
+}
+
+Symbol toSymbol(JSONValue dem, string name) {
+    trace(dem);
+    if (dem.object["Node"].str != "mangledName") {
+        return Symbol(
+            name: name,
+            demangledName: name,
+            isTemplateInstantiation: false,
+        );
+    }
+    auto s = Symbol(
+        name: name,
+        demangledName: dem.object["Value"].str,
+        isTemplateInstantiation: false,
+    );
+    if (!("children" in dem.object)) return s;
+    auto tm = maybeTemplateName(dem.object["children"]);
+    tracef("MaybeTemplate: %s", tm);
+
+    s.isTemplateInstantiation = tm.isTemplate;
+    if (tm.isTemplate) {
+        s.templateName = tm.templateNameAndField;
+        s.rest = tm.templateArguments;
+    }
+    return s;
+}
+
 Symbol parseLine(string line)
 {
     auto parts = line.split;
@@ -34,7 +104,7 @@ Symbol parseLine(string line)
     }
     else
     {
-        assert(parts.length == 4);
+        fatalf(parts.length != 4, "expected to have 4 parts, got: %s", parts);
         kind = parts[2][0];
         name = parts[3];
         size = to!size_t(parts[1]);
@@ -47,16 +117,9 @@ Symbol parseLine(string line)
         import std.json;
         writeln(sdem.toJSON(true));
     }
-    import d = custom_demangle;
-
-    auto base = cast(string) d.demangle(name);
-    auto baseSplit = base.findSplit("!");
-    auto isTempl = baseSplit[2] != "";
-    auto templ = baseSplit[0];
-    auto rest = baseSplit[2];
-    tracef("Symbol: name=%s, demangledName=%s, kind=%c, size=%d, base=%s, is_instance=%s, template=%s, rest=%s",
-        name, demName, kind, size, base, isTempl, templ, rest);
-    auto sym = Symbol(name, demName, base, isTempl, templ, rest, kind, size);
+    auto sym = sdem.toSymbol(name);
+    sym.kind = kind;
+    sym.size = size;
 
     return sym;
 }
@@ -125,6 +188,7 @@ Symbols parseNmOutput(string text)
 {
     Symbols syms;
 
+    size_t cnt = 0;
     foreach (line; text.split('\n'))
     {
         if (line.length == 0)
@@ -132,6 +196,7 @@ Symbols parseNmOutput(string text)
             trace("Skipping an empty line");
             continue;
         }
+        cnt++;
         Symbol s = parseLine(line);
         syms.allSyms ~= s;
         syms.perKind.require(s.kind, []) ~= s;
@@ -140,6 +205,7 @@ Symbols parseNmOutput(string text)
             syms.tInsts ~= s;
             syms.perTemplate.require(s.templateName, []) ~= s;
         }
+        infof(cnt % 1000 == 0, "%d lines processes", cnt);
     }
     syms.stats = computeStats("all file", syms.allSyms);
     syms.tInstsStats = computeStats("template instances", syms.tInsts);
@@ -167,6 +233,8 @@ void processObjectFile(string filename)
     tracef("nm returned %d", res.status);
     fatalf(res.status != 0, "nm execution failed with return code %d", res.status);
     auto syms = parseNmOutput(res.output);
+
+    trace("Done parsing nm output");
 
     displayStats(syms.stats);
     displayStats(syms.tInstsStats);
