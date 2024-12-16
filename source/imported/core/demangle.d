@@ -2430,8 +2430,13 @@ JSONValue structuredDemangle(return scope const(char)[] buf, return scope char[]
         auto res = d.dst.copyInput(buf);
         return JSONValue(["Node": "non-mangled", "Value": res]);
     }
-    auto res = d.demangleName();
-    return b.result;
+    auto demangled = d.demangleName();
+    if (demangled == buf) {
+        return JSONValue(["Node": "non-mangled", "Value": demangled]);
+    }
+    auto res = b.result;
+    assert (res["Value"].str == demangled);
+    return res;
 }
 
 /**
@@ -3456,6 +3461,8 @@ class SymbolBuilder {
             } else {
                 if (stack.back.length > 1)
                     stack.back.popBack;
+                else
+                    stack.back.back["Value"] = JSONValue("");
             }
         } catch(Exception) {
 
