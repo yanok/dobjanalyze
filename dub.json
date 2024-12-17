@@ -5,7 +5,7 @@
     "argsd": "~>1.1.0",
     "structured-demangle": {
       "repository": "git+https://github.com/yanok/structured-demangle",
-      "version": "507d4cac2a24df7054f47fd083727fcfcc16f786"
+      "version": "8a204523800f8777333f8df46c953b0393c9d0fd"
     }
   },
   "description": "Analyze D object files",
