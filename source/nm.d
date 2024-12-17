@@ -21,6 +21,7 @@ struct Symbol
     string rest;
     char kind;
     size_t size;
+    Node demangle;
 }
 
 // debug = dump_json;
@@ -77,12 +78,14 @@ Symbol toSymbol(Node dem, string name, ref const(CmdlineOptions) options) {
             name: name,
             demangledName: name,
             isTemplateInstantiation: false,
+            demangle: dem,
         );
     }
     auto s = Symbol(
         name: name,
         demangledName: dem.value,
         isTemplateInstantiation: false,
+        demangle: dem,
     );
     if (dem.children.empty) return s;
     auto tm = maybeTemplateName(dem.children, options);
