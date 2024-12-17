@@ -9,6 +9,8 @@ import std.algorithm.searching;
 
 import structured_demangle;
 
+import options;
+
 struct Symbol
 {
     string name;
@@ -29,7 +31,7 @@ private struct MaybeTemplateName {
     string templateArguments;
 }
 
-MaybeTemplateName maybeTemplateName(Node[] children) {
+MaybeTemplateName maybeTemplateName(Node[] children, ref const(CmdlineOptions) options) {
     string[] parts;
     bool isTemplate = false;
     bool isMixin = false;
@@ -49,7 +51,7 @@ MaybeTemplateName maybeTemplateName(Node[] children) {
                     templateArgs = tich[1].value;
             } else {
                 // To group mixin contents together, drop everything that goes before __mixinN
-                if (c.value.startsWith("__mixin")) {
+                if (options.groupMixins && c.value.startsWith("__mixin")) {
                     parts = ["<mixin>"];
                     isMixin = true;
                 } else {
@@ -68,7 +70,7 @@ MaybeTemplateName maybeTemplateName(Node[] children) {
     );
 }
 
-Symbol toSymbol(Node dem, string name) {
+Symbol toSymbol(Node dem, string name, ref const(CmdlineOptions) options) {
     trace(dem);
     if (dem.kind != Node.Kind.MangledName) {
         return Symbol(
@@ -83,7 +85,7 @@ Symbol toSymbol(Node dem, string name) {
         isTemplateInstantiation: false,
     );
     if (dem.children.empty) return s;
-    auto tm = maybeTemplateName(dem.children);
+    auto tm = maybeTemplateName(dem.children, options);
     tracef("MaybeTemplate: %s", tm);
 
     s.isTemplateInstantiation = tm.isTemplate;
@@ -94,7 +96,7 @@ Symbol toSymbol(Node dem, string name) {
     return s;
 }
 
-Symbol parseLine(string line)
+Symbol parseLine(string line, ref const(CmdlineOptions) options)
 {
     auto parts = line.split;
     tracef("Parsing line: %s, parts: %s", line, parts);
@@ -120,7 +122,7 @@ Symbol parseLine(string line)
         import std.json;
         writeln(sdem.toJSON(true));
     }
-    auto sym = sdem.toSymbol(name);
+    auto sym = sdem.toSymbol(name, options);
     sym.kind = kind;
     sym.size = size;
 
@@ -187,7 +189,7 @@ struct Symbols
     Stats[string] statsPerTemplate;
 }
 
-Symbols parseNmOutput(string text)
+Symbols parseNmOutput(string text, ref const(CmdlineOptions) options)
 {
     Symbols syms;
 
@@ -200,7 +202,7 @@ Symbols parseNmOutput(string text)
             continue;
         }
         cnt++;
-        Symbol s = parseLine(line);
+        Symbol s = parseLine(line, options);
         syms.allSyms ~= s;
         syms.perKind.require(s.kind, []) ~= s;
         if (s.isTemplateInstantiation)
@@ -223,7 +225,7 @@ Symbols parseNmOutput(string text)
     return syms;
 }
 
-void processObjectFile(string filename)
+void processObjectFile(string filename, CmdlineOptions options)
 {
     import std.process;
 
@@ -235,7 +237,7 @@ void processObjectFile(string filename)
     auto res = execute([nm, "-S", "-t", "d", filename]);
     tracef("nm returned %d", res.status);
     fatalf(res.status != 0, "nm execution failed with return code %d", res.status);
-    auto syms = parseNmOutput(res.output);
+    auto syms = parseNmOutput(res.output, options);
 
     trace("Done parsing nm output");
 
