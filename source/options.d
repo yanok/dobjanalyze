@@ -6,6 +6,7 @@ import args : Arg, Optional, parseArgsWithConfigFile, printArgsHelp;
 
 static struct CmdlineOptions {
     @Arg("Try to group mixins", Optional.yes) bool groupMixins;
+    @Arg("Output JSON to filename", Optional.yes) string jsonOutFile;
 }
 
 Tuple!(CmdlineOptions, "options", bool, "isHelp") parseArgs(ref string[] args) {

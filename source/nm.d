@@ -1,6 +1,7 @@
 module nm;
 
 import std.file;
+import std.stdio;
 import std.logger;
 import std.array;
 import std.conv;
@@ -22,6 +23,17 @@ struct Symbol
     char kind;
     size_t size;
     Node demangle;
+    JSONValue toJSON() {
+        return JSONValue([
+            "name": JSONValue(name),
+            "isTemplateInstantiation": JSONValue(isTemplateInstantiation),
+            "templateName": JSONValue(templateName),
+            "templateArguments": JSONValue(rest),
+            "kind": JSONValue(kind),
+            "size": JSONValue(size),
+            "demangle": demangle.toJSON,
+        ]);
+    }
 }
 
 // debug = dump_json;
@@ -242,6 +254,26 @@ void processObjectFile(string filename, CmdlineOptions options)
     fatalf(res.status != 0, "nm execution failed with return code %d", res.status);
     auto syms = parseNmOutput(res.output, options);
 
+    if (options.jsonOutFile != "") {
+        try {
+            auto f = File(options.jsonOutFile, "w");
+            f.writeln("[");
+            bool first = true;
+            foreach(s; syms.allSyms) {
+                auto j = s.toJSON;
+                if (!first) {
+                    f.writeln(",");
+                } else {
+                    first = false;
+                }
+                f.write(toJSON(j, true));
+            }
+            f.writeln("\n]");
+        } catch (Exception e) {
+            errorf("Failed writing results to JSON file %s: %s", options.jsonOutFile, e);
+        }
+
+    }
     trace("Done parsing nm output");
 
     displayStats(syms.stats);
