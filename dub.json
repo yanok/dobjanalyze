@@ -2,7 +2,11 @@
   "authors": ["Ilya Yanok"],
   "copyright": "Copyright © 2024, Ilya Yanok",
   "dependencies": {
-    "argsd": "~>1.1.0"
+    "argsd": "~>1.1.0",
+    "structured-demangle": {
+      "repository": "git+https://github.com/yanok/structured-demangle",
+      "version": "507d4cac2a24df7054f47fd083727fcfcc16f786"
+    }
   },
   "description": "Analyze D object files",
   "license": "MIT",
