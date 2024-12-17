@@ -6,7 +6,8 @@ import std.array;
 import std.conv;
 import std.json;
 import std.algorithm.searching;
-import imported.core.demangle;
+
+import structured_demangle;
 
 struct Symbol
 {
@@ -28,29 +29,25 @@ private struct MaybeTemplateName {
     string templateArguments;
 }
 
-MaybeTemplateName maybeTemplateName(JSONValue children) {
+MaybeTemplateName maybeTemplateName(Node[] children) {
     string[] parts;
     bool isTemplate = false;
     string templateArgs = "";
-    foreach (c; children.array) {
-        fatalf(!("Node" in c.object), "%s has no Node", c);
-        fatalf(!("Value" in c.object), "%s has no Value", c);
-        if (c.object["Node"].str == "symbolName") {
-            if ("children" in c.object &&
-                "Node" in c.object["children"][0] &&
-                c.object["children"][0]["Node"].str == "templateInstance") {
+    foreach (c; children) {
+        if (c.kind == Node.Kind.SymbolName) {
+            if (!c.children.empty &&
+                c.children[0].kind == Node.Kind.TemplateInstance) {
                 if (isTemplate) break;
                 isTemplate = true;
-                auto ti = c.object["children"][0];
-                fatalf(!("children" in ti), "template instance %s has no children", ti);
-                auto tich = ti["children"];
-                fatalf(tich.array.length == 0, "template instance %s has zero children", ti);
-                fatalf(!("Value" in tich[0]), "template name %s has no Value", tich[0]);
-                parts ~= tich[0]["Value"].str ~ "!(...)";
-                if (tich.array.length > 1)
-                    templateArgs = tich[1]["Value"].str;
+                auto ti = c.children[0];
+                fatalf(ti.children.empty, "template instance %s has no children", ti);
+                auto tich = ti.children;
+                fatalf(tich[0].kind != Node.Kind.TemplateName, "template instance first child is not a name: %s", tich[0]);
+                parts ~= tich[0].value ~ "!(...)";
+                if (tich.array.length > 1 && tich[1].kind == Node.Kind.TemplateArguments)
+                    templateArgs = tich[1].value;
             } else {
-                parts ~= c["Value"].str;
+                parts ~= c.value;
                 if (isTemplate) break;
             }
         } else {
@@ -64,9 +61,9 @@ MaybeTemplateName maybeTemplateName(JSONValue children) {
     );
 }
 
-Symbol toSymbol(JSONValue dem, string name) {
+Symbol toSymbol(Node dem, string name) {
     trace(dem);
-    if (dem.object["Node"].str != "mangledName") {
+    if (dem.kind != Node.Kind.MangledName) {
         return Symbol(
             name: name,
             demangledName: name,
@@ -75,11 +72,11 @@ Symbol toSymbol(JSONValue dem, string name) {
     }
     auto s = Symbol(
         name: name,
-        demangledName: dem.object["Value"].str,
+        demangledName: dem.value,
         isTemplateInstantiation: false,
     );
-    if (!("children" in dem.object)) return s;
-    auto tm = maybeTemplateName(dem.object["children"]);
+    if (dem.children.empty) return s;
+    auto tm = maybeTemplateName(dem.children);
     tracef("MaybeTemplate: %s", tm);
 
     s.isTemplateInstantiation = tm.isTemplate;
@@ -109,7 +106,6 @@ Symbol parseLine(string line)
         name = parts[3];
         size = to!size_t(parts[1]);
     }
-    auto demName = cast(string) demangle(name);
     auto sdem = structuredDemangle(name);
     tracef("Demangled: %s", sdem);
     debug(dump_json) {
