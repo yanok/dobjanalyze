@@ -32,6 +32,7 @@ private struct MaybeTemplateName {
 MaybeTemplateName maybeTemplateName(Node[] children) {
     string[] parts;
     bool isTemplate = false;
+    bool isMixin = false;
     string templateArgs = "";
     foreach (c; children) {
         if (c.kind == Node.Kind.SymbolName) {
@@ -47,15 +48,21 @@ MaybeTemplateName maybeTemplateName(Node[] children) {
                 if (tich.array.length > 1 && tich[1].kind == Node.Kind.TemplateArguments)
                     templateArgs = tich[1].value;
             } else {
-                parts ~= c.value;
-                if (isTemplate) break;
+                // To group mixin contents together, drop everything that goes before __mixinN
+                if (c.value.startsWith("__mixin")) {
+                    parts = ["<mixin>"];
+                    isMixin = true;
+                } else {
+                    parts ~= c.value;
+                    if (isTemplate || isMixin) break;
+                }
             }
         } else {
             break;
         }
     }
     return MaybeTemplateName(
-        isTemplate: isTemplate,
+        isTemplate: isTemplate || isMixin,
         templateNameAndField: parts.join("."),
         templateArguments: templateArgs,
     );
