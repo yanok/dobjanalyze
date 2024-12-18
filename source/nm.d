@@ -111,7 +111,12 @@ Symbol toSymbol(Node dem, string name, ref const(CmdlineOptions) options) {
     return s;
 }
 
-Symbol parseLine(string line, ref const(CmdlineOptions) options)
+struct ParsedLine {
+    bool success;
+    Symbol sym;
+}
+
+ParsedLine parseLine(string line, ref const(CmdlineOptions) options)
 {
     auto parts = line.split;
     tracef("Parsing line: %s, parts: %s", line, parts);
@@ -130,6 +135,14 @@ Symbol parseLine(string line, ref const(CmdlineOptions) options)
         name = parts[3];
         size = to!size_t(parts[1]);
     }
+    ParsedLine pl;
+    pl.success = false;
+    if (options.filterTemplate != "") {
+        auto tparts = options.filterTemplate.findSplit("!(...)");
+        static import core.demangle;
+        auto dem = core.demangle.demangle(name);
+        if (dem.canFind(tparts[0]) == 0) return pl;
+    }
     auto sdem = structuredDemangle(name);
     tracef("Demangled: %s", sdem);
     debug(dump_json) {
@@ -137,11 +150,14 @@ Symbol parseLine(string line, ref const(CmdlineOptions) options)
         import std.json;
         writeln(sdem.toJSON(true));
     }
-    auto sym = sdem.toSymbol(name, options);
-    sym.kind = kind;
-    sym.size = size;
+    pl.sym = sdem.toSymbol(name, options);
+    if (options.filterTemplate != "" && pl.sym.templateName != options.filterTemplate)
+        return pl;
+    pl.sym.kind = kind;
+    pl.sym.size = size;
+    pl.success = true;
 
-    return sym;
+    return pl;
 }
 
 struct Stats
@@ -217,13 +233,14 @@ Symbols parseNmOutput(string text, ref const(CmdlineOptions) options)
             continue;
         }
         cnt++;
-        Symbol s = parseLine(line, options);
-        syms.allSyms ~= s;
-        syms.perKind.require(s.kind, []) ~= s;
-        if (s.isTemplateInstantiation)
+        ParsedLine pl = parseLine(line, options);
+        if (!pl.success) continue;
+        syms.allSyms ~= pl.sym;
+        syms.perKind.require(pl.sym.kind, []) ~= pl.sym;
+        if (pl.sym.isTemplateInstantiation)
         {
-            syms.tInsts ~= s;
-            syms.perTemplate.require(s.templateName, []) ~= s;
+            syms.tInsts ~= pl.sym;
+            syms.perTemplate.require(pl.sym.templateName, []) ~= pl.sym;
         }
         infof(cnt % 1000 == 0, "%d lines processes", cnt);
     }
@@ -276,6 +293,10 @@ void processObjectFile(string filename, CmdlineOptions options)
     }
     trace("Done parsing nm output");
 
+    if (options.filterTemplate != "") {
+        displayStats(syms.statsPerTemplate[options.filterTemplate]);
+        return;
+    }
     displayStats(syms.stats);
     displayStats(syms.tInstsStats);
     foreach (kind, stats; syms.statsPerKind)
